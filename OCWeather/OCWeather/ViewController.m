@@ -8,7 +8,8 @@
 
 #import "ViewController.h"
 #import <CoreLocation/CoreLocation.h>
-
+#import <AFNetworking/AFNetworking.h>
+#import "WeatherSev.h"
 
 
 
@@ -16,12 +17,33 @@
 
 @property (nonatomic,strong) CLLocationManager  *locMgr;
 
+
+@property (weak, nonatomic) IBOutlet UILabel *locationLabel;
+@property (weak, nonatomic) IBOutlet UIImageView *icon;
+@property (weak, nonatomic) IBOutlet UILabel *temperature;
+
+
+@property (nonatomic,strong) WeatherSev *weatherSev;
+
 @end
 
 
 
 
 @implementation ViewController
+
+
+
+- (WeatherSev *)weatherSev{
+    
+    
+    if(!_weatherSev){
+        _weatherSev =  [[WeatherSev alloc] init];
+    }
+    
+    return _weatherSev;
+}
+
 
 //get
 - (CLLocationManager *)locMgr{
@@ -42,8 +64,12 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+
     
     NSLog(@"viewDidLoad....");
+    
+
+    
     
     
     //ios8询问权限
@@ -83,6 +109,81 @@
 
 
 
+
+- (void)updateWeatherInfo:(CLLocationDegrees)latitude andLongitude:(CLLocationDegrees)longitude{
+    
+    
+        [self.weatherSev retrieveForecast:latitude andLongitude:longitude successBlock:^(id responseObject) {
+            
+            NSLog(@"获得到数据");
+            NSLog(@"%@",responseObject);
+            
+            
+        } errorBlock:^(id errorObj) {
+            NSLog(@"%@",errorObj);
+        }];
+    
+    
+}
+
+
+//更新ui
+- (void)updateUI:(NSDictionary *)weatherObj{
+    id temp  =  [[weatherObj  objectForKey:@"main"] objectForKey:@"temp"];
+    id location = [weatherObj objectForKey:@"name"];
+    
+    //温度转化
+    if( [[[weatherObj objectForKey:@"sys"] objectForKey:@"country"] isEqualToString:@"US"]){
+        
+    }
+    
+    
+    NSNumber   *condition = [[[weatherObj objectForKey:@"weather"] objectAtIndex:0] objectForKey:@"id"];
+    
+    //日出
+    NSNumber *sunrise = [[weatherObj objectForKey:@"sys"] objectForKey:@"sunrise"];
+    
+    //日落
+    NSNumber *sunset = [[weatherObj objectForKey:@"sys"] objectForKey:@"sunset"];
+    
+    //白天还是黑夜
+    BOOL isNight = NO;
+    
+    //当前时间
+    NSTimeInterval now = [[NSDate alloc] init].timeIntervalSince1970 ;
+    
+    
+    //日出之前 和 日落之后 晚上
+    if(now < [sunrise doubleValue]|| now > [sunset doubleValue]){
+        isNight = YES;
+    }
+    
+    [self updateWeatherIcon:condition withNightTime: isNight];
+    
+   //  NSLog(@"%d",condition);
+
+    
+    
+    self.temperature.text = [[temp stringValue] stringByAppendingString:@"℃"];
+    self.locationLabel.text = location;
+    
+    
+   }
+
+
+//更新天气icon
+- (void)updateWeatherIcon:(NSNumber *)condition withNightTime:(BOOL)isNight{
+    if([condition intValue] < 300){
+        if(isNight){
+            self.icon.image = [UIImage imageNamed:@"tstorm1_night"];
+        }
+        else{
+            self.icon.image = [UIImage imageNamed:@"tstorm1"];
+        }
+    }
+}
+
+
 //定位失败
 - (void)locationManager:(CLLocationManager *)manager
        didFailWithError:(NSError *)error{
@@ -91,11 +192,25 @@
 }
 
 #pragma mark-CLLocationManagerDelegate
+
+
 //定位回调方法
 - (void)locationManager:(CLLocationManager *)manager
      didUpdateLocations:(NSArray *)locations{
     
-    NSLog(@"定位到:%@", [locations firstObject]);
+    CLLocation *location = [locations firstObject];
+    NSLog(@"定位到:%@", location);
+    
+    if([location horizontalAccuracy] >0){
+        
+        [manager stopUpdatingLocation];
+        [self updateWeatherInfo:location.coordinate.latitude andLongitude:  location.coordinate.longitude];
+
+    }
+   
+    
+    
+    
 }
 
 
