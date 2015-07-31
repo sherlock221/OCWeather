@@ -17,7 +17,9 @@
 
 @property (nonatomic,strong) CLLocationManager  *locMgr;
 
+@property (weak, nonatomic) IBOutlet UILabel *loadingText;
 
+@property (weak, nonatomic) IBOutlet UIActivityIndicatorView *loadingIndicator;
 @property (weak, nonatomic) IBOutlet UILabel *locationLabel;
 @property (weak, nonatomic) IBOutlet UIImageView *icon;
 @property (weak, nonatomic) IBOutlet UILabel *temperature;
@@ -33,7 +35,7 @@
 @implementation ViewController
 
 
-
+//懒加载
 - (WeatherSev *)weatherSev{
     
     
@@ -45,7 +47,7 @@
 }
 
 
-//get
+//懒加载
 - (CLLocationManager *)locMgr{
     
     if(!_locMgr){
@@ -64,11 +66,14 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-
+    [self.loadingIndicator startAnimating];
+    
     
     NSLog(@"viewDidLoad....");
     
-
+    //设置背景图片
+    UIImage *background  = [UIImage imageNamed:@"background.png"];
+    self.view.backgroundColor = [[UIColor alloc] initWithPatternImage:background];
     
     
     
@@ -116,11 +121,16 @@
         [self.weatherSev retrieveForecast:latitude andLongitude:longitude successBlock:^(id responseObject) {
             
             NSLog(@"获得到数据");
-            NSLog(@"%@",responseObject);
+            //NSLog(@"%@",responseObject);
+            
+            [self updateUI:responseObject];
+            
+            
             
             
         } errorBlock:^(id errorObj) {
             NSLog(@"%@",errorObj);
+            self.loadingText.text = @"获得天气数据出错!";
         }];
     
     
@@ -158,7 +168,12 @@
         isNight = YES;
     }
     
-    [self updateWeatherIcon:condition withNightTime: isNight];
+    //更新icon
+    [self.weatherSev updateWeatherIcon:[condition intValue]  isNightTime: isNight index:1 callBack:^(int index, NSString *name) {
+        NSLog(@"%@",name);
+        [self updatePictures:index withName:name];
+        
+    } ];
     
    //  NSLog(@"%d",condition);
 
@@ -168,19 +183,17 @@
     self.locationLabel.text = location;
     
     
+    [self.loadingIndicator stopAnimating];
+    self.loadingIndicator.hidden = true;
+    self.loadingText.text = nil;
+    
+    
    }
 
 
-//更新天气icon
-- (void)updateWeatherIcon:(NSNumber *)condition withNightTime:(BOOL)isNight{
-    if([condition intValue] < 300){
-        if(isNight){
-            self.icon.image = [UIImage imageNamed:@"tstorm1_night"];
-        }
-        else{
-            self.icon.image = [UIImage imageNamed:@"tstorm1"];
-        }
-    }
+
+- (void)updatePictures:(int)index withName:(NSString *)name{
+    self.icon.image =  [UIImage imageNamed:name];
 }
 
 
@@ -189,6 +202,7 @@
        didFailWithError:(NSError *)error{
     
     NSLog(@"ERROR");
+    self.loadingText.text = @"地理位置信息不可用";
 }
 
 #pragma mark-CLLocationManagerDelegate
