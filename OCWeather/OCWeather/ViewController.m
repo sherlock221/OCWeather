@@ -141,10 +141,17 @@
 - (void)updateUI:(NSDictionary *)weatherObj{
     id temp  =  [[weatherObj  objectForKey:@"main"] objectForKey:@"temp"];
     id location = [weatherObj objectForKey:@"name"];
+    NSNumber *rt;
+    
     
     //温度转化
     if( [[[weatherObj objectForKey:@"sys"] objectForKey:@"country"] isEqualToString:@"US"]){
+        rt =   [[NSNumber alloc] initWithDouble:( round( (([temp doubleValue] - 273.15) * 1.8) +32))];
+      
         
+    }
+    else{
+        rt  = [[NSNumber alloc]initWithDouble:(round([temp doubleValue] -273.15))];
     }
     
     
@@ -179,7 +186,7 @@
 
     
     
-    self.temperature.text = [[temp stringValue] stringByAppendingString:@"℃"];
+    self.temperature.text = [ [rt stringValue] stringByAppendingString:@"℃"];
     self.locationLabel.text = location;
     
     
